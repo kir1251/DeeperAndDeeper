@@ -13,23 +13,33 @@ public class GridDrawer : MonoBehaviour
 
     // Start is called before the first frame update
     void Start()
-    { 
-        CreateChunk(10, -10);
-        CreateChunk(10, -7);
-        CreateChunk(10, -5);
-        CreateChunk(10, -2);
+    {
+
+        for (int i = -10; i <= 0; i++)
+        {
+            CreateChunk(40, i);
+        }
+
     }
     
 
-
+    ///Ширина шахты
     [SerializeField]
     int Width;
-
-    List<byte[]> grid = new List<byte[]>();
-    List<bool[]> gridMask = new List<bool[]>();
-
+    
+    ///Количество разных ресурсов
     [SerializeField]
     int ResourceCount;
+
+
+
+    ///Какие ресурсы лежат в клетках
+    List<byte[]> grid = new List<byte[]>();
+    
+    ///Раскопаны ли клетки
+    List<bool[]> gridMask = new List<bool[]>();
+
+    
 
     /// <summary>
     /// Three-sigma gauss random
@@ -55,11 +65,12 @@ public class GridDrawer : MonoBehaviour
         return Mathf.Clamp(std * sigma + mean, minValue, maxValue);
     }
 
-
+    [SerializeField]
+    float RANDOM_SIGMA = 6;
     int GetResourceFromIndex(float index)
 	{
-        const float SIGMA = 10;
-        return Mathf.RoundToInt(GaussRandom(index, SIGMA, 0, ResourceCount));
+        
+        return Mathf.RoundToInt(GaussRandom(index, RANDOM_SIGMA, 0, ResourceCount));
 
 	}
     void CreateChunk(int height, int medResource)
