@@ -1,5 +1,6 @@
 using System.Collections;
 using System.Collections.Generic;
+
 using UnityEngine;
 
 
@@ -15,9 +16,9 @@ public class GridDrawer : MonoBehaviour
     void Start()
     {
 
-        for (int i = -10; i <= 0; i++)
+        for (int i = -6; i <= 10; i++)
         {
-            CreateChunk(40, i);
+            CreateChunk(10, i);
         }
 
     }
@@ -66,13 +67,20 @@ public class GridDrawer : MonoBehaviour
     }
 
     [SerializeField]
+    int averageVein = 20;
+    [SerializeField]
+    float veinDensity = .3f;
+    [SerializeField]
+    int veinSigma = 10;
+    [SerializeField]
     float RANDOM_SIGMA = 6;
     int GetResourceFromIndex(float index)
 	{
-        
-        return Mathf.RoundToInt(GaussRandom(index, RANDOM_SIGMA, 0, ResourceCount));
-
+        return Mathf.RoundToInt(GaussRandom(index, RANDOM_SIGMA, 1, ResourceCount));
 	}
+
+        
+
     void CreateChunk(int height, int medResource)
 	{
         for (int i = 0; i < height; i++)
@@ -81,19 +89,82 @@ public class GridDrawer : MonoBehaviour
             bool[] maskRow = new bool[Width];
             grid.Add(row);
             gridMask.Add(maskRow);
+            currentDepth++;
             for (int j = 0; j < Width; j++)
-			{
-                row[j] = (byte)GetResourceFromIndex(medResource);
+            {
+                row[j] = 255;
                 maskRow[j] = true;
+            }
+            for (int j = 0; j < Width; j++)
+            {                 
+                int pos = Random.Range(0, Width);
+                while (row[pos] != 255) pos = (pos + 1) % Width;
+
+
+                //понять, стоит ли приделать эту клетку к одной из соседних жил
+                bool isResource = false;
+                int veinSize = 0;
+                byte resource = 0;
+                bool first = true;
+                HashSet<int> visited = new HashSet<int>();
+                Queue<int> queue = new Queue<int>();
+                queue.Enqueue(pos + (grid.Count - 1) * Width);
+                while (queue.Count > 0)
+				{
+                    int p = queue.Dequeue();
+                    if (visited.Contains(p)) continue;
+                    visited.Add(p);
+                    int yIndex = p / Width;
+                    int xIndex = p % Width;
+                    byte cellRes = GetResource(xIndex, yIndex);
+                    if (cellRes > 0 && cellRes != 255 && resource > 0 && resource != 255 && cellRes != resource)
+                    {
+                        isResource = false;
+                        veinSize = -1;
+                        break;
+                    } 
+                    if (cellRes > 0 && cellRes != 255 || first)
+					{
+
+                        if (!first)
+                        {
+                            veinSize++;
+                            resource = cellRes;
+                        }
+                        if (xIndex > 0) queue.Enqueue(xIndex - 1 + yIndex * Width);
+                        if (xIndex < Width - 1) queue.Enqueue(xIndex + 1 + yIndex * Width);
+                        if (yIndex > 0) queue.Enqueue(xIndex + (yIndex - 1)* Width);
+                        if (yIndex < grid.Count - 1) queue.Enqueue(xIndex + (yIndex + 1) * Width);
+                    }
+                    first = false;
+
+                }
+                float variatedSize = GaussRandom(averageVein, veinSigma);
+                if (variatedSize > veinSize)
+                {
+                    isResource = veinSize >= 0;
+                }
+
+                if (veinSize == 0)
+				{
+                    isResource = Random.value < veinDensity / averageVein;
+                }
+                if (resource == 0) resource = (byte)GetResourceFromIndex(medResource);
+                row[j] = isResource ? resource : (byte)0;
 			}
 		}
-        currentDepth += height;
+
 	}
 
     public bool CheckCell(int x, int y)
 	{
         return y >= 0 && y < currentDepth && x >= 0 && x < Width && gridMask[y][x];
 	}
+
+    public byte GetResource(int x, int y)
+    {
+        return (y >= 0 && y < currentDepth && x >= 0 && x < Width) ? grid[y][x] : (byte)0;
+    }
 
     public byte CheckNeighbours(int x, int y)
 	{
@@ -112,8 +183,6 @@ public class GridDrawer : MonoBehaviour
     {
         if (currentDepth != lastDepth)
 		{
-            
-
             for (int i = lastDepth; i < currentDepth; i++)
 			{
                 for (int j = 0; j < Width; j++) {
